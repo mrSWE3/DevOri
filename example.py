@@ -12,7 +12,7 @@ PORT = 1883
 #Recomended to make factory methods for client construction
 def make_deviceClient(host: str, port: int, prefix: str, verbose: bool) -> DeviceClient:
     return DeviceClient(FundementalClient(AiomqttPhysicalClient(
-        AiomqttClient(hostname=HOST, port=PORT)),
+        AiomqttClient(hostname=host, port=port)),
         topic_prefix=prefix,
         verbose=verbose
         ))
