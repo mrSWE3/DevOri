@@ -4,14 +4,25 @@ import json
 from mqttDevices import DualDevice
 from utils import dict2bytes
 import os
-PUBLISH_PREFIX = "zigbee2mqtt"
+from aiomqtt import Client as AiomqttClient
+PREFIX = "zigbee2mqtt"
 HOST = os.environ.get("MQTT_ADDR", "localhost")
+PORT = 1883
 
-
-
+#Recomended to make factory methods for client construction
+def make_deviceClient(host: str, port: int, prefix: str, verbose: bool) -> DeviceClient:
+    return DeviceClient(FundementalClient(AiomqttPhysicalClient(
+        AiomqttClient(hostname=HOST, port=PORT)),
+        topic_prefix=prefix,
+        verbose=verbose
+        ))
+ 
 async def main():
-    async with FundementalClient(HOST, PUBLISH_PREFIX,verbose=True) as fc:
-        clinet = DeviceClient(fc)
+    
+    async with make_deviceClient(host=HOST,
+                                 port=PORT,
+                                 prefix=PREFIX,
+                                 verbose=True) as clinet:
         friendly_name = "0x0c4314fffe19426b"
         async with DualDevice[bytes, Message](
                             friendly_name=friendly_name, 
