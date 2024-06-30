@@ -10,11 +10,12 @@ PORT = 1883
 
 #Recomended to make factory methods for client construction
 def make_deviceClient(host: str, port: int, prefix: str, verbose: bool) -> DeviceClient[bytes, AioMessage]:
-    return DeviceClient[bytes, AioMessage](
-        FundementalClient[bytes, AioMessage]( 
-            AiomqttPhysicalClient(AiomqttClient(hostname=host, port=port)), 
-                                             topic_prefix=prefix,
-                                             verbose=verbose))
+    return  DeviceClient[bytes, AioMessage](
+                FundementalClient[bytes, AioMessage]( 
+                    AiomqttPhysicalClient(
+                        AiomqttClient(hostname=host, port=port)), 
+                                                    topic_prefix=prefix,
+                                                    verbose=verbose))
  
 async def main():
     
@@ -34,7 +35,7 @@ async def main():
                 
                 
                 message = await device.recive_from(topic="")
-                print("found", message.payload)
+                print(f"found {message.payload} at {message.topic}")
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main())

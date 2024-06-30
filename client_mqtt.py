@@ -71,8 +71,8 @@ class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]):
        
         self.prefix = topic_prefix
         self.pysical_client = pysical_client
-        self.spesifict_subs: Dict[str, List[Subscriber[Message[receive_T]]]] = {}
-        self.wildcard_subs: Dict[str, List[Subscriber[Message[receive_T]]]] = {}
+        self.spesifict_subs: Dict[str, List[Subscriber[receive_T]]] = {}
+        self.wildcard_subs: Dict[str, List[Subscriber[receive_T]]] = {}
         self.tg = TaskGroup()
         self.verbose = verbose
     
@@ -81,7 +81,7 @@ class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]):
     def full_topic(self, end: str):
         return f"{self.prefix}/{end}"
 
-    async def sub_topic(self, topic: str,subscriber: Subscriber[Message[receive_T]]) -> None:
+    async def sub_topic(self, topic: str,subscriber: Subscriber[receive_T]) -> None:
         if not topic in (list(self.spesifict_subs.keys()) + list(self.spesifict_subs.keys())):
             await self.pysical_client.subscribe(topic= self.full_topic(topic))
             if self.verbose:
@@ -101,7 +101,7 @@ class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]):
             print(f"Subscriber added to wildcard topic: {self.full_topic(topic)}")
             
     
-    async def unsub_topic(self, topic: str,subscriber:  Subscriber[Message[receive_T]]) -> None:
+    async def unsub_topic(self, topic: str,subscriber:  Subscriber[receive_T]) -> None:
         
         if not is_wild_topic(topic):
             topic_subs = self.spesifict_subs.get(topic, None)
@@ -169,14 +169,14 @@ class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]):
 
     
 dc_receive_T = TypeVar("dc_receive_T") 
-class DeviceClient(Generic[send_T, dc_receive_T], Subscribable[Message[dc_receive_T], str, str], Sender[send_T]):
+class DeviceClient(Generic[send_T, dc_receive_T], Subscribable[dc_receive_T, str, str], Sender[send_T]):
     def __init__(self, client: FundementalClient[send_T, dc_receive_T], ) -> None:
         self.client = client
 
-    async def subscribe(self, sub: Subscriber[Message[dc_receive_T]], args: str) -> None:
+    async def subscribe(self, sub: Subscriber[dc_receive_T], args: str) -> None:
         await self.client.sub_topic(args, sub)
 
-    async def unsubscribe(self, sub: Subscriber[Message[dc_receive_T]], args: str) -> None:
+    async def unsubscribe(self, sub: Subscriber[dc_receive_T], args: str) -> None:
         await self.client.unsub_topic(args, sub)
 
     async def send(self, topic: str, payload: send_T):
