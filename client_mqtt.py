@@ -1,38 +1,40 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Callable, Dict, List, Generic, TypeVar, Coroutine, Generator, Tuple, AsyncContextManager, Protocol, AsyncGenerator
-from types import AsyncGeneratorType
-from aiomqtt import Client as AiomqttClient, Message
-import uuid
+from typing import Dict, List, Generic, TypeVar, AsyncContextManager, Protocol, AsyncGenerator, Any
+from aiomqtt import Client as AiomqttClient, Message as Aiomessage
 from paho.mqtt.client import topic_matches_sub
-from utils import Subscriber, Subscribable, MultiACM
-from aiotools import TaskGroup
-from mqttDevices import Sender, Publisher, Reciver, DualDevice
-
+from utils import Subscriber, Subscribable, Message
+from aiotools import TaskGroup # type: ignore has no stubs
+from mqttDevices import Sender
 
 
 def is_wild_topic(topic: str):
     return any([c == "+" or c == "#" for c in topic])
+
+
 send_T = TypeVar("send_T", contravariant=True)
-receive_T = TypeVar("receive_T", covariant=True)
-class PhysicalClient(Generic[send_T, receive_T], AsyncContextManager, Protocol):
-    def __init__(self, *args, **kwargs) -> None:
+receive_T = TypeVar("receive_T")
+
+
+
+class PhysicalClient(Generic[send_T, receive_T], AsyncContextManager[Any], Protocol):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         ...
     async def subscribe(self, topic: str):
         ...
     async def unsubscribe(self, topic: str):
         ...
-    async def publish(self, topic: str, payload:send_T):
+    async def publish(self, topic: str, payload: send_T):
         ...
-    def get_receive_message_generator(self) -> AsyncGenerator[receive_T, None]:
+    def get_receive_message_generator(self) -> AsyncGenerator[Message[receive_T], None]:
         ...
     async def __aenter__(self):
         return self
-    async def __aexit__(self, exc_type, exc_value, traceback):
+    async def __aexit__(self,*exc_info: Any):
         return None
 
-class AiomqttPhysicalClient(PhysicalClient[bytes, Message]):
+class AiomqttPhysicalClient(PhysicalClient[bytes, Aiomessage]):
     def __init__(self, aiomqttClient: AiomqttClient) -> None:
         self._aiomqttClient = aiomqttClient
     async def subscribe(self, topic: str):
@@ -41,35 +43,45 @@ class AiomqttPhysicalClient(PhysicalClient[bytes, Message]):
         await self._aiomqttClient.unsubscribe(topic)
     async def publish(self, topic: str, payload: bytes):
         await self._aiomqttClient.publish(topic, payload)
-    def get_receive_message_generator(self) -> AsyncGenerator[Message, None]:
-        return self._aiomqttClient.messages
+
+    def get_receive_message_generator(self) -> AsyncGenerator[Message[Aiomessage], None]:
+        class AG_wrapper(AsyncGenerator[Message[Aiomessage], None]):
+            def __init__(self, c: AiomqttPhysicalClient) -> None:
+                self.c = c
+            def __aiter__(self):
+                return self
+            async def __anext__(self) -> Message[Aiomessage]:
+                m = await self.c._aiomqttClient.messages.__anext__()
+                return Message(m.topic.value, m)
+        return AG_wrapper(self)
+            
     async def __aenter__(self):
         await self._aiomqttClient.__aenter__()
         return self
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        await self._aiomqttClient.__aexit__(exc_type, exc_value, traceback)
+    async def __aexit__(self,*exc_info: Any):
+        await self._aiomqttClient.__aexit__(*exc_info)
         return None
 
 
-class FundementalClient(AsyncContextManager): 
+class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]): 
     def __init__(self, 
-                 pysical_client: PhysicalClient,
+                 pysical_client: PhysicalClient[send_T, receive_T],
                  topic_prefix: str = "",
                  verbose: bool = False) -> None:
        
         self.prefix = topic_prefix
         self.pysical_client = pysical_client
-        self.spesifict_subs: Dict[str, List[Subscriber[Message]]] = {}
-        self.wildcard_subs: Dict[str, List[Subscriber[Message]]] = {}
+        self.spesifict_subs: Dict[str, List[Subscriber[Message[receive_T]]]] = {}
+        self.wildcard_subs: Dict[str, List[Subscriber[Message[receive_T]]]] = {}
         self.tg = TaskGroup()
         self.verbose = verbose
     
 
     
-    def full_topic(self, end):
+    def full_topic(self, end: str):
         return f"{self.prefix}/{end}"
 
-    async def sub_topic(self, topic: str,subscriber: Subscriber[Message]) -> None:
+    async def sub_topic(self, topic: str,subscriber: Subscriber[Message[receive_T]]) -> None:
         if not topic in (list(self.spesifict_subs.keys()) + list(self.spesifict_subs.keys())):
             await self.pysical_client.subscribe(topic= self.full_topic(topic))
             if self.verbose:
@@ -89,7 +101,7 @@ class FundementalClient(AsyncContextManager):
             print(f"Subscriber added to wildcard topic: {self.full_topic(topic)}")
             
     
-    async def unsub_topic(self, topic: str,subscriber: Subscriber[Message]) -> None:
+    async def unsub_topic(self, topic: str,subscriber:  Subscriber[Message[receive_T]]) -> None:
         
         if not is_wild_topic(topic):
             topic_subs = self.spesifict_subs.get(topic, None)
@@ -118,17 +130,17 @@ class FundementalClient(AsyncContextManager):
     async def __listen(self):  # Always running as own task
         async for msg in self.pysical_client.get_receive_message_generator():
             if self.verbose:
-                print(f"Recived message with payload: {msg.payload}, on topic: {msg.topic.value}")
-            mesage_topic = msg.topic.value
-            subscribers = self.spesifict_subs.get(msg.topic.value, [])
+                print(f"Recived message with payload: {msg.payload}, on topic: {msg.topic}")
+            mesage_topic = msg.topic
+            subscribers = self.spesifict_subs.get(msg.topic, [])
             for wild_topic, subs in self.wildcard_subs.items():
                 if topic_matches_sub(wild_topic, mesage_topic):
                     subscribers.extend(subs)
 
             for sub in subscribers:
                 if self.verbose:
-                    print(f"Called back subscriber: {sub} of topic: {msg.topic.value}")
-                self.tg.create_task(sub.call_back(msg))  # Prevent tasks from disappearing
+                    print(f"Called back subscriber: {sub} of topic: {msg.topic}")
+                self.tg.create_task(sub.call_back(msg))  # type: ignore Prevent tasks from disappearing
          
 
     async def __aenter__(self):
@@ -140,40 +152,40 @@ class FundementalClient(AsyncContextManager):
         return self
     
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        await self.tg.__aexit__(exc_type, exc_value, traceback)
-        await self.pysical_client.__aexit__(exc_type, exc_value, traceback)
+    async def __aexit__(self,*exc_info: Any):
+        await self.tg.__aexit__(*exc_info) # type: ignore
+        await self.pysical_client.__aexit__(*exc_info)
         self._remote_listener_task.cancel()
         if self.verbose:
             print("Exited async context")
         return None
   
 
-    async def publish(self, topic: str, payload: bytes) -> None:  # For type-safety
+    async def publish(self, topic: str, payload: send_T) -> None:  # For type-safety
         c = self.pysical_client.publish(topic=self.full_topic(topic), payload=payload)
-        self.tg.create_task(c) 
+        self.tg.create_task(c)  # type: ignore
         print(f"Published to {self.full_topic(topic)} with payload {payload}")
 
 
     
-
-class DeviceClient(Subscribable[Message, str, str], Sender[bytes]):
-    def __init__(self, client: FundementalClient, ) -> None:
+dc_receive_T = TypeVar("dc_receive_T") 
+class DeviceClient(Generic[send_T, dc_receive_T], Subscribable[Message[dc_receive_T], str, str], Sender[send_T]):
+    def __init__(self, client: FundementalClient[send_T, dc_receive_T], ) -> None:
         self.client = client
 
-    async def subscribe(self, sub: Subscriber[Message], args: str) -> None:
+    async def subscribe(self, sub: Subscriber[Message[dc_receive_T]], args: str) -> None:
         await self.client.sub_topic(args, sub)
 
-    async def unsubscribe(self, sub: Subscriber[Message], args: str) -> None:
+    async def unsubscribe(self, sub: Subscriber[Message[dc_receive_T]], args: str) -> None:
         await self.client.unsub_topic(args, sub)
 
-    async def send(self, topic: str, payload: bytes):
+    async def send(self, topic: str, payload: send_T):
         await self.client.publish(topic, payload)
 
     async def __aenter__(self):
         await self.client.__aenter__()
         return self
     
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        await self.client.__aexit__(exc_type, exc_value, traceback)
+    async def __aexit__(self,*exc_info: Any):
+        await self.client.__aexit__(*exc_info)
         return None

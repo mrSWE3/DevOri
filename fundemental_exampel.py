@@ -1,15 +1,13 @@
 from client_mqtt import *
 import asyncio
-import json
-from mqttDevices import DualDevice
-from utils import dict2bytes
+from utils import dict2bytes, Message as OO_message
 import os
 PREFIX = "zigbee2mqtt"
 HOST = os.environ.get("MQTT_ADDR", "localhost")
 PORT = 1883
 
 #Recomended to make factory methods for client construction
-def make_FundementalClient(host: str, port: int, prefix: str, verbose: bool) -> FundementalClient:
+def make_FundementalClient(host: str, port: int, prefix: str, verbose: bool) -> FundementalClient[bytes, Aiomessage]:
     return FundementalClient(AiomqttPhysicalClient(
         AiomqttClient(hostname=host, port=port)),
         topic_prefix=prefix,
@@ -22,7 +20,7 @@ async def main():
                                  verbose=True) as fc:
         
         friendly_name = "0x0c4314fffe19426b"
-        sub = Subscriber[Message]()
+        sub = Subscriber[OO_message[Aiomessage]]()
         await fc.sub_topic(friendly_name, sub)
         while True:
             await fc.publish(f"{friendly_name}/get", dict2bytes({"battery": ""}))

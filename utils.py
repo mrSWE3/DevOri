@@ -1,10 +1,10 @@
 from __future__ import annotations
-from typing import TypedDict
 
-from typing import TypeVar, Generic, List, Dict, Tuple, Awaitable, Coroutine, Callable, Any, Generator, AsyncContextManager, Protocol
+from typing import TypeVar, Generic, List, Dict, Coroutine, Callable, Any, Generator, AsyncContextManager, Protocol
 import asyncio
 import json
-
+from asyncio import Task
+from dataclasses import dataclass
 
 subable_T = TypeVar("subable_T", )
 sub_args = TypeVar("sub_args", contravariant=True)
@@ -38,7 +38,7 @@ load_type = TypeVar("load_type")
 class Load_limiter(Generic[load_type]):
     def __init__(self, objects: List[load_type], 
                  object_min_rest: float,            #the minimum time bwteen acceses on indeviudal objects
-                 network_max_load: int,             #max number of accesses on the network
+                 network_max_load: int,             #subable_Tmax number of accesses on the network
                  network_load_time: float           #the duration of a network access
                  ) -> None:
                 
@@ -49,7 +49,7 @@ class Load_limiter(Generic[load_type]):
         self.object_locks: Dict[load_type, asyncio.Lock]= {
             l:asyncio.Lock() for l in objects}
      
-        self.task_shield = set()  # Prevent tasks from disappearing
+        self.task_shield: set[Task[None]] = set()  # Prevent tasks from disappearing
 
 
 
@@ -82,13 +82,13 @@ class Load_limiter(Generic[load_type]):
         self.task_shield.add(release_network)
         release_network.add_done_callback(self.task_shield.discard)
         
-def dict2bytes(d: Dict) -> bytes:
+def dict2bytes(d: Dict[Any, Any]) -> bytes:
     return json.dumps(d).encode('utf-8')
 
 
 
-sub_AsyncContextManager = TypeVar("sub_AsyncContextManager", bound=AsyncContextManager)
-class MultiACM(AsyncContextManager, Generic[sub_AsyncContextManager]):
+sub_AsyncContextManager = TypeVar("sub_AsyncContextManager", bound=AsyncContextManager[Any])
+class MultiACM(AsyncContextManager[Any], Generic[sub_AsyncContextManager]):
     def __init__(self, resources: List[sub_AsyncContextManager]):
         self.resources: List[sub_AsyncContextManager] = resources
 
@@ -96,7 +96,11 @@ class MultiACM(AsyncContextManager, Generic[sub_AsyncContextManager]):
         self.active_resources = await asyncio.gather(*[resource.__aenter__() for resource in self.resources])
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
-        await asyncio.gather(*[resource.__aexit__(exc_type, exc, tb) for resource in self.resources])
+    async def __aexit__(self,*exc_info: Any):
+        await asyncio.gather(*[resource.__aexit__(*exc_info) for resource in self.resources])
 
-
+receive_T = TypeVar("receive_T")
+@dataclass
+class Message(Generic[receive_T]):
+    topic: str
+    payload: receive_T
