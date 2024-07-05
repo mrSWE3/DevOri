@@ -1,8 +1,9 @@
-from client_mqtt import DeviceClient, FundementalClient, AiomqttClient, AiomqttPhysicalClient
+from DevOri.client_mqtt import DeviceClient, FundementalClient
 import asyncio
-from mqttDevices import DualDevice
-from utils import dict2bytes
+from DevOri.mqttDevices import DualDevice
+from DevOri.utils import dict2bytes
 import os
+from DevOri.Aiomqtt_imp import AiomqttPhysicalClient
 from aiomqtt import Client as AiomqttClient, Message
 
 PREFIX = "zigbee2mqtt"
@@ -10,7 +11,7 @@ HOST = os.environ.get("MQTT_ADDR", "localhost")
 PORT = 1883
 
 #Recomended to make factory methods for client construction
-def make_deviceClient(host: str, port: int, prefix: str, verbose: bool) -> DeviceClient[bytes, AioMessage]:
+def make_deviceClient(host: str, port: int, prefix: str, verbose: bool) -> DeviceClient[bytes, Message]:
     return  DeviceClient[bytes, Message](
                 FundementalClient[bytes, Message]( 
                     AiomqttPhysicalClient(

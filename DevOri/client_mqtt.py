@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Dict, List, Generic, TypeVar, AsyncContextManager, Protocol, AsyncGenerator, Any
-from aiomqtt import Client as AiomqttClient, Message as Aiomessage
+
 from paho.mqtt.client import topic_matches_sub
 from utils import Subscriber, Subscribable, Message
 from aiotools import TaskGroup # type: ignore has no stubs
@@ -32,34 +32,6 @@ class PhysicalClient(Generic[send_T, receive_T], AsyncContextManager[Any], Proto
     async def __aenter__(self):
         return self
     async def __aexit__(self,*exc_info: Any):
-        return None
-
-class AiomqttPhysicalClient(PhysicalClient[bytes, Aiomessage]):
-    def __init__(self, aiomqttClient: AiomqttClient) -> None:
-        self._aiomqttClient = aiomqttClient
-    async def subscribe(self, topic: str):
-        await self._aiomqttClient.subscribe(topic)
-    async def unsubscribe(self, topic: str):
-        await self._aiomqttClient.unsubscribe(topic)
-    async def publish(self, topic: str, payload: bytes):
-        await self._aiomqttClient.publish(topic, payload)
-
-    def get_receive_message_generator(self) -> AsyncGenerator[Message[Aiomessage], None]:
-        class AG_wrapper(AsyncGenerator[Message[Aiomessage], None]):
-            def __init__(self, c: AiomqttPhysicalClient) -> None:
-                self.c = c
-            def __aiter__(self):
-                return self
-            async def __anext__(self) -> Message[Aiomessage]:
-                m = await self.c._aiomqttClient.messages.__anext__()
-                return Message(m.topic.value, m)
-        return AG_wrapper(self)
-            
-    async def __aenter__(self):
-        await self._aiomqttClient.__aenter__()
-        return self
-    async def __aexit__(self,*exc_info: Any):
-        await self._aiomqttClient.__aexit__(*exc_info)
         return None
 
 
@@ -93,7 +65,7 @@ class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]):
             topic_subs.append(subscriber)
             self.spesifict_subs[self.full_topic(topic)] = topic_subs
             if self.verbose:
-                print(f"Subscriber added to static topic: {self.full_topic(topic)}")
+                print(f"Subscriber addedrequestign to static topic: {self.full_topic(topic)}")
         else:
             topic_subs = self.wildcard_subs.get(self.full_topic(topic), [])
             topic_subs.append(subscriber)
