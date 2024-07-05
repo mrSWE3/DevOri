@@ -1,6 +1,6 @@
 from typing import AsyncGenerator, Any
 from aiomqtt import Client as AiomqttClient, Message as Aiomessage
-from client_mqtt import PhysicalClient, Message
+from client_mqtt import PhysicalClient, Message, DeviceClient, FundementalClient
 
 class AiomqttPhysicalClient(PhysicalClient[bytes, Aiomessage]):
     def __init__(self, aiomqttClient: AiomqttClient) -> None:
@@ -29,3 +29,19 @@ class AiomqttPhysicalClient(PhysicalClient[bytes, Aiomessage]):
     async def __aexit__(self,*exc_info: Any):
         await self._aiomqttClient.__aexit__(*exc_info)
         return None
+
+def make_deviceClient(host: str, port: int, prefix: str, verbose: bool) -> DeviceClient[bytes, Aiomessage]:
+    return  DeviceClient[bytes, Aiomessage](
+                FundementalClient[bytes, Aiomessage]( 
+                    AiomqttPhysicalClient(
+                        AiomqttClient(hostname=host, port=port)), 
+                                                    topic_prefix=prefix,
+                                                    verbose=verbose))
+
+
+def make_FundementalClient(host: str, port: int, prefix: str, verbose: bool) -> FundementalClient[bytes, Aiomessage]:
+    return FundementalClient(AiomqttPhysicalClient(
+        AiomqttClient(hostname=host, port=port)),
+        topic_prefix=prefix,
+        verbose=verbose
+        )

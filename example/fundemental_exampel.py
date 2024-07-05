@@ -2,19 +2,13 @@ from DevOri.client_mqtt import *
 import asyncio
 from DevOri.utils import dict2bytes
 import os
-from aiomqtt import Client as AiomqttClient, Message
-from DevOri.Aiomqtt_imp import AiomqttPhysicalClient
+from aiomqtt import Message
+from DevOri.Aiomqtt_imp import make_FundementalClient
 PREFIX = "zigbee2mqtt"
 HOST = os.environ.get("MQTT_ADDR", "localhost")
 PORT = 1883
 
-#Recomended to make factory methods for client construction
-def make_FundementalClient(host: str, port: int, prefix: str, verbose: bool) -> FundementalClient[bytes, Message]:
-    return FundementalClient(AiomqttPhysicalClient(
-        AiomqttClient(hostname=host, port=port)),
-        topic_prefix=prefix,
-        verbose=verbose
-        )
+
 async def main():
     async with make_FundementalClient(host=HOST,
                                  port=PORT,
