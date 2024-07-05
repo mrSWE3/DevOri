@@ -3,15 +3,16 @@ import asyncio
 from mqttDevices import DualDevice
 from utils import dict2bytes
 import os
-from aiomqtt import Client as AiomqttClient, Message as AioMessage
+from aiomqtt import Client as AiomqttClient, Message
+
 PREFIX = "zigbee2mqtt"
 HOST = os.environ.get("MQTT_ADDR", "localhost")
 PORT = 1883
 
 #Recomended to make factory methods for client construction
 def make_deviceClient(host: str, port: int, prefix: str, verbose: bool) -> DeviceClient[bytes, AioMessage]:
-    return  DeviceClient[bytes, AioMessage](
-                FundementalClient[bytes, AioMessage]( 
+    return  DeviceClient[bytes, Message](
+                FundementalClient[bytes, Message]( 
                     AiomqttPhysicalClient(
                         AiomqttClient(hostname=host, port=port)), 
                                                     topic_prefix=prefix,
@@ -24,7 +25,7 @@ async def main():
                                  prefix=PREFIX,
                                  verbose=True) as clinet:
         friendly_name = "0x0c4314fffe19426b"
-        async with DualDevice[bytes, AioMessage](
+        async with DualDevice[bytes, Message](
                             friendly_name=friendly_name, 
                             communicator=clinet,
                             read_topics={""}
