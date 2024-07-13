@@ -18,13 +18,13 @@ class Reciver[payload_T]:
                  sender: Sender[payload_T],
                  prefix: str = ""
                  ) -> None:
-        self.friendly_name = friendly_name
-        self.prefix = f"{prefix}{"/" if prefix != "" else ""}{friendly_name}"
+        self._friendly_name = friendly_name
+        self._prefix = f"{prefix}{"/" if prefix != "" else ""}{friendly_name}"
         
-        self.sender = sender
+        self._sender = sender
 
     async def send_to(self, topic: LiteralString, payload: payload_T):
-        await self.sender.send(f"{self.prefix}/{topic}", payload)
+        await self._sender.send(f"{self._prefix}/{topic}", payload)
 
 
 
@@ -37,7 +37,6 @@ class Publisher[receive_T](AsyncContextManager[Any]):
                  read_topics: Set[str],
                  prefix: str = ""
                  ) -> None:
-        self.friendly_name = friendly_name
         self._subscribers: Dict[str, Subscriber[receive_T]] = {}
         self._informer: Subscribable[receive_T, str, str] = informer
         self._publish_topics: Set[str] = read_topics
@@ -77,7 +76,6 @@ class Device[payload_T, receive_T]( AsyncContextManager[Any]):
                  read_topics: Set[str],
                  prefix: str = ""
                  ) -> None:
-        self.friendly_name = friendly_name
         self._reciver = Reciver[payload_T](friendly_name, communicator, prefix)
         self._publisher = Publisher[receive_T](friendly_name, communicator, read_topics, prefix)
 
