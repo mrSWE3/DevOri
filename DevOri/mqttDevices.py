@@ -1,49 +1,45 @@
 
 import asyncio
-from typing import TypeVar, Generic, AsyncContextManager, Dict, Set, Protocol, Any, List, Coroutine
+from typing import AsyncContextManager, Dict, Set, Protocol, Any, List, Coroutine, LiteralString
 from utils import Subscribable, Subscriber
-class Device:
-    def __init__(self, friendly_name: str) -> None:
-        self.friendly_name = friendly_name
 
-sender_type = TypeVar("sender_type", contravariant=True)
-class Sender(Generic[sender_type], Protocol):
+
+
+class Sender[payload_T](Protocol):
     def __init__(self) -> None:
         super().__init__()
     
-    async def send(self, topic: str, payload: sender_type):
+    async def send(self, topic: str, payload: payload_T):
         pass
 
 
-payload_type = TypeVar("payload_type")
-class Reciver(Device, Generic[payload_type]):
+class Reciver[payload_T]:
     def __init__(self, friendly_name: str, 
-                 sender: Sender[payload_type],
+                 sender: Sender[payload_T],
                  prefix: str = ""
                  ) -> None:
-        super().__init__(friendly_name)
+        self.friendly_name = friendly_name
         self.prefix = f"{prefix}{"/" if prefix != "" else ""}{friendly_name}"
         
         self.sender = sender
 
-    async def send_to(self, topic: str, payload: payload_type):
+    async def send_to(self, topic: LiteralString, payload: payload_T):
         await self.sender.send(f"{self.prefix}/{topic}", payload)
 
 
 
 
-publisher_recive_T = TypeVar("publisher_recive_T")
 
 
-class Publisher(Device, AsyncContextManager[Any], Generic[publisher_recive_T]):
+class Publisher[receive_T](AsyncContextManager[Any]):
     def __init__(self, friendly_name: str, 
-                 informer: Subscribable[publisher_recive_T, str, str],
+                 informer: Subscribable[receive_T, str, str],
                  read_topics: Set[str],
                  prefix: str = ""
                  ) -> None:
-        super().__init__(friendly_name)
-        self._subscribers: Dict[str, Subscriber[publisher_recive_T]] = {}
-        self._informer: Subscribable[publisher_recive_T, str, str] = informer
+        self.friendly_name = friendly_name
+        self._subscribers: Dict[str, Subscriber[receive_T]] = {}
+        self._informer: Subscribable[receive_T, str, str] = informer
         self._publish_topics: Set[str] = read_topics
         
         self.prefix = f"{prefix}{"/" if prefix != "" else ""}{friendly_name}"
@@ -51,18 +47,15 @@ class Publisher(Device, AsyncContextManager[Any], Generic[publisher_recive_T]):
     async def __aenter__(self):
         tasks: List[Coroutine[Any, Any, None]] = []
         for topic in self._publish_topics:
-            sub = Subscriber[publisher_recive_T]()
+            sub = Subscriber[receive_T]()
             self._subscribers[topic] = sub
             tasks.append(self._informer.subscribe(sub, 
                                                   f"{self.prefix}{"/" if topic != "" else ""}{topic}"))
         await asyncio.gather(*tasks)
         return self
     
-    async def recive_from(self, topic: str | None = None) -> publisher_recive_T:
-
-        if topic is None:
-            topic = list(self._publish_topics)[0]
-        elif not (topic in self._publish_topics):
+    async def recive_from(self, topic: LiteralString) -> receive_T:
+        if not (topic in self._publish_topics):
             raise Exception("Topic is not subscribed to, call could never finish")
         return (await self._subscribers[topic].get_item())
         
@@ -74,26 +67,25 @@ class Publisher(Device, AsyncContextManager[Any], Generic[publisher_recive_T]):
             tasks.append(self._informer.unsubscribe(sub, f"{self.prefix}/{topic}"))
         await asyncio.gather(*tasks)
 
-class Communicator(Generic[sender_type, publisher_recive_T],Sender[sender_type], Subscribable[publisher_recive_T, str, str], Protocol):
+class Communicator[payload_T, receive_T](Sender[payload_T], Subscribable[receive_T, str, str], Protocol):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__()
 
-class DualDevice(Device, Generic[payload_type, publisher_recive_T], AsyncContextManager[Any]):
+class Device[payload_T, receive_T]( AsyncContextManager[Any]):
     def __init__(self, friendly_name: str,
-                 communicator: Communicator[sender_type, publisher_recive_T],
+                 communicator: Communicator[payload_T, receive_T],
                  read_topics: Set[str],
                  prefix: str = ""
                  ) -> None:
-        super().__init__(friendly_name)
-        
-        self._reciver = Reciver[payload_type](friendly_name, communicator, prefix)
-        self._publisher = Publisher[publisher_recive_T](friendly_name, communicator, read_topics, prefix)
+        self.friendly_name = friendly_name
+        self._reciver = Reciver[payload_T](friendly_name, communicator, prefix)
+        self._publisher = Publisher[receive_T](friendly_name, communicator, read_topics, prefix)
 
-    async def send_to(self, topic: str, payload: payload_type):
+    async def send_to(self, topic: LiteralString, payload: payload_T):
         await self._reciver.send_to(topic, payload)
         
     
-    async def recive_from(self, topic: str | None = None) -> publisher_recive_T:
+    async def recive_from(self, topic: LiteralString) -> receive_T:
         return await self._publisher.recive_from(topic)
 
     async def __aenter__(self):

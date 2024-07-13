@@ -36,7 +36,7 @@ class Subscriber(Generic[sub_T]):
 
 def dict2bytes(d: Dict[Any, Any]) -> bytes:
     return json.dumps(d).encode('utf-8')
-
+    
 
 
 sub_AsyncContextManager = TypeVar("sub_AsyncContextManager", bound=AsyncContextManager[Any])
@@ -51,8 +51,8 @@ class MultiACM(AsyncContextManager[Any], Generic[sub_AsyncContextManager]):
     async def __aexit__(self,*exc_info: Any):
         await asyncio.gather(*[resource.__aexit__(*exc_info) for resource in self.resources])
 
-receive_T = TypeVar("receive_T")
+
 @dataclass
-class Message(Generic[receive_T]):
+class Message[receive_T]:
     topic: str
     payload: receive_T

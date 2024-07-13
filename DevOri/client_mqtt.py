@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Dict, List, Generic, TypeVar, AsyncContextManager, Protocol, AsyncGenerator, Any
+from typing import Dict, List, AsyncContextManager, Protocol, AsyncGenerator, Any
 
 from paho.mqtt.client import topic_matches_sub
 from utils import Subscriber, Subscribable, Message
@@ -10,15 +10,13 @@ from mqttDevices import Sender
 
 
 def is_wild_topic(topic: str):
-    return any([c == "+" or c == "#" for c in topic])
-
-
-send_T = TypeVar("send_T", contravariant=True)
-receive_T = TypeVar("receive_T")
+    return any(c in ("+","#") for c in topic)
 
 
 
-class PhysicalClient(Generic[send_T, receive_T], AsyncContextManager[Any], Protocol):
+
+
+class PhysicalClient[send_T, receive_T]( AsyncContextManager[Any], Protocol):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         ...
     async def subscribe(self, topic: str):
@@ -35,7 +33,7 @@ class PhysicalClient(Generic[send_T, receive_T], AsyncContextManager[Any], Proto
         return None
 
 
-class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]): 
+class FundementalClient[send_T, receive_T](AsyncContextManager[Any]): 
     def __init__(self, 
                  pysical_client: PhysicalClient[send_T, receive_T],
                  topic_prefix: str = "",
@@ -54,7 +52,7 @@ class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]):
         return f"{self.prefix}/{end}"
 
     async def sub_topic(self, topic: str,subscriber: Subscriber[receive_T]) -> None:
-        if not topic in (list(self.spesifict_subs.keys()) + list(self.spesifict_subs.keys())):
+        if not topic in (list(self.spesifict_subs.keys()) + list(self.wildcard_subs.keys())):
             await self.pysical_client.subscribe(topic= self.full_topic(topic))
             if self.verbose:
                 print(f"New mqtt subscription: {self.full_topic(topic)}")
@@ -133,22 +131,22 @@ class FundementalClient(AsyncContextManager[Any], Generic[send_T, receive_T]):
         return None
   
 
-    async def publish(self, topic: str, payload: send_T) -> None:  # For type-safety
+    async def publish(self, topic: str, payload: send_T) -> None:  
         c = self.pysical_client.publish(topic=self.full_topic(topic), payload=payload)
         self.tg.create_task(c)  # type: ignore
         print(f"Published to {self.full_topic(topic)} with payload {payload}")
 
 
     
-dc_receive_T = TypeVar("dc_receive_T") 
-class DeviceClient(Generic[send_T, dc_receive_T], Subscribable[dc_receive_T, str, str], Sender[send_T]):
-    def __init__(self, client: FundementalClient[send_T, dc_receive_T], ) -> None:
+
+class DeviceClient[send_T, receive_T]( Subscribable[receive_T, str, str], Sender[send_T]):
+    def __init__(self, client: FundementalClient[send_T, receive_T], ) -> None:
         self.client = client
 
-    async def subscribe(self, sub: Subscriber[dc_receive_T], args: str) -> None:
+    async def subscribe(self, sub: Subscriber[receive_T], args: str) -> None:
         await self.client.sub_topic(args, sub)
 
-    async def unsubscribe(self, sub: Subscriber[dc_receive_T], args: str) -> None:
+    async def unsubscribe(self, sub: Subscriber[receive_T], args: str) -> None:
         await self.client.unsub_topic(args, sub)
 
     async def send(self, topic: str, payload: send_T):
