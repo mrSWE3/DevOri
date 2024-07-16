@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import TypeVar, Generic, List, Dict, Any, Generator, AsyncContextManager, Protocol
+from typing import TypeVar, Generic, List, Dict, Any, Generator, AsyncContextManager, Protocol, Callable, Coroutine
 import asyncio
 import json
 from dataclasses import dataclass
 
-subable_T = TypeVar("subable_T", )
-sub_args = TypeVar("sub_args", contravariant=True)
-unsub_args = TypeVar("unsub_args", contravariant=True)
-class Subscribable(Generic[subable_T, sub_args, unsub_args], Protocol):
+
+class Subscribable[subable_T, sub_args, unsub_args](Protocol):
     def __init__(self) -> None:
         super().__init__()
     async def subscribe(self, sub: Subscriber[subable_T], args: sub_args) -> None:
@@ -17,8 +15,22 @@ class Subscribable(Generic[subable_T, sub_args, unsub_args], Protocol):
         pass
 
 
-sub_T = TypeVar("sub_T")
-class Subscriber(Generic[sub_T]):
+class Subscriber[sub_T](Protocol):
+    async def call_back(self, t: sub_T):
+       ...
+
+class LambdaSubscriber[sub_T](Subscriber[sub_T]):
+    def __init__(self, call_back: Callable[[sub_T],Coroutine[None, None, None]]) -> None:
+        super().__init__()
+        self._call_back = call_back
+    async def call_back(self, t: sub_T):
+        await self._call_back(t)
+
+
+def make_sub[sub_T](call_back: Callable[[sub_T],None]):
+    return 
+
+class QueueSubscriber[sub_T]:
     def __init__(self, max_itmes: int = 0) -> None:
         self._call_items: asyncio.Queue[sub_T] = asyncio.Queue(max_itmes)
     async def call_back(self, t: sub_T):
@@ -28,6 +40,7 @@ class Subscriber(Generic[sub_T]):
         self._call_items.put_nowait(t)
     async def get_item(self) -> sub_T:
         return await self._call_items.get()
+    
     def get_untill_empty(self) -> Generator[sub_T, None,  None]:
         while not self._call_items.empty():
             yield self._call_items.get_nowait()
@@ -36,7 +49,9 @@ class Subscriber(Generic[sub_T]):
 
 def dict2bytes(d: Dict[Any, Any]) -> bytes:
     return json.dumps(d).encode('utf-8')
-    
+
+def bytes2dict(b: bytes) -> Dict[str, str | int | float]:
+    return json.loads(b)
 
 
 sub_AsyncContextManager = TypeVar("sub_AsyncContextManager", bound=AsyncContextManager[Any])

@@ -63,7 +63,7 @@ class FundementalClient[send_T, receive_T](AsyncContextManager[Any]):
             topic_subs.append(subscriber)
             self._spesifict_subs[self._full_topic(topic)] = topic_subs
             if self.verbose:
-                print(f"Subscriber addedrequestign to static topic: {self._full_topic(topic)}")
+                print(f"Subscriber added to static topic: {self._full_topic(topic)}")
         else:
             topic_subs = self._wildcard_subs.get(self._full_topic(topic), [])
             topic_subs.append(subscriber)
@@ -71,7 +71,7 @@ class FundementalClient[send_T, receive_T](AsyncContextManager[Any]):
             print(f"Subscriber added to wildcard topic: {self._full_topic(topic)}")
             
     
-    async def unsub_topic(self, topic: str,subscriber:  Subscriber[receive_T]) -> None:
+    async def unsub_topic(self, topic: str, subscriber: Subscriber[receive_T]) -> None:
         
         if not is_wild_topic(topic):
             topic_subs = self._spesifict_subs.get(topic, None)
@@ -110,7 +110,8 @@ class FundementalClient[send_T, receive_T](AsyncContextManager[Any]):
             for sub in subscribers:
                 if self.verbose:
                     print(f"Called back subscriber: {sub} of topic: {msg.topic}")
-                self.tg.create_task(sub.call_back(msg))  # type: ignore Prevent tasks from disappearing
+                t = sub.call_back(msg.payload)
+                self.__tg.create_task(t)  # type: ignore
          
 
     async def __aenter__(self):
@@ -133,8 +134,9 @@ class FundementalClient[send_T, receive_T](AsyncContextManager[Any]):
 
     async def publish(self, topic: str, payload: send_T) -> None:  
         c = self._pysical_client.publish(topic=self._full_topic(topic), payload=payload)
-        self.tg.create_task(c)  # type: ignore
-        print(f"Published to {self._full_topic(topic)} with payload {payload}")
+        self.__tg.create_task(c)  # type: ignore
+        if self.verbose:
+            print(f"Published to {self._full_topic(topic)} with payload {payload}")
 
 
     

@@ -5,6 +5,7 @@ from client_mqtt import PhysicalClient, Message, DeviceClient, FundementalClient
 class AiomqttPhysicalClient(PhysicalClient[bytes, Aiomessage]):
     def __init__(self, aiomqttClient: AiomqttClient) -> None:
         self._aiomqttClient = aiomqttClient
+        
     async def subscribe(self, topic: str):
         await self._aiomqttClient.subscribe(topic)
     async def unsubscribe(self, topic: str):
@@ -13,16 +14,17 @@ class AiomqttPhysicalClient(PhysicalClient[bytes, Aiomessage]):
         await self._aiomqttClient.publish(topic, payload)
 
     def get_receive_message_generator(self) -> AsyncGenerator[Message[Aiomessage], None]:
-        class AG_wrapper(AsyncGenerator[Message[Aiomessage], None]):
-            def __init__(self, c: AiomqttPhysicalClient) -> None:
-                self.c = c
-            def __aiter__(self):
-                return self
-            async def __anext__(self) -> Message[Aiomessage]:
-                m = await self.c._aiomqttClient.messages.__anext__()
-                return Message(m.topic.value, m)
-        return AG_wrapper(self)
-            
+        async def f():
+            async for message in self._aiomqttClient.messages:
+                yield Message(message.topic.value, message)
+        return f()
+    
+    async def __anext__(self) -> Message[Aiomessage]:
+        print("wait1")
+        m = await self._aiomqttClient.messages.__anext__()
+        print("got1")
+        return Message(m.topic.value, m)
+    
     async def __aenter__(self):
         await self._aiomqttClient.__aenter__()
         return self
