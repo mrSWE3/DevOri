@@ -88,9 +88,11 @@ class FundementalClient[send_T, receive_T](AsyncContextManager[Any]):
                     if self.verbose:
                         print(f"Removed mqtt subscription from topic: {self._full_topic(topic)}")
             except ValueError:
-                raise Exception(f"Subscriber not subscribed to this topic: {topic}")
+                if self.verbose:
+                    print(f"Subscriber not subscribed to this topic: {topic}, can not be removed")
         else:
-            raise Exception(f"No subscribers of topic: {topic}")
+            if self.verbose:
+               print(f"Subscriber not subscribed to this topic: {topic}, can not be removed")
         
             
     

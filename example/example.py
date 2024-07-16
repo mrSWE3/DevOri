@@ -45,7 +45,7 @@ async def main():
                             categories=RemoteCategory
                             ) as device:
             
-            while True:
+            
                 await device.send_to(topic="get",
                             payload=any2bytes({"battery": ""}))
                 
