@@ -10,7 +10,7 @@ sys.path.insert(1, "/".join(os.path.realpath(__file__).split("/")[0:-2]))
 
 
 from mqttDevices import Device
-from utils import dict2bytes, bytes2dict
+from utils import any2bytes, bytes2any
 from Aiomqtt_imp import make_deviceClient
 
 
@@ -25,7 +25,7 @@ class RemoteCategory(Enum):
 
 def sort_remote_payload(message: Message_ai) -> RemoteCategory:
     b: bytes = message.payload  # type: ignore
-    payload = bytes2dict(b).keys() 
+    payload = bytes2any(b).keys() 
     
     if "action" in payload:
         return RemoteCategory.ACTION
@@ -47,7 +47,7 @@ async def main():
             
             while True:
                 await device.send_to(topic="get",
-                            payload=dict2bytes({"battery": ""}))
+                            payload=any2bytes({"battery": ""}))
                 
                 
                 message = await device.recive_from(topic="", 

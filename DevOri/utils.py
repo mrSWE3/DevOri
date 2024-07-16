@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, List, Dict, Any, Generator, AsyncContextManager, Protocol, Callable, Coroutine
+from typing import TypeVar, Generic, List, Any, Generator, AsyncContextManager, Protocol, Callable, Coroutine
 import asyncio
 import json
 from dataclasses import dataclass
@@ -42,10 +42,10 @@ class QueueSubscriber[sub_T]:
 
 
 
-def dict2bytes(d: Dict[Any, Any]) -> bytes:
+def any2bytes(d: Any) -> bytes:
     return json.dumps(d).encode('utf-8')
 
-def bytes2dict(b: bytes) -> Dict[Any, Any]:
+def bytes2any(b: bytes) -> Any:
     return json.loads(b)
 
 
