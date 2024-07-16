@@ -10,9 +10,9 @@ class Subscribable[subable_T, sub_args, unsub_args](Protocol):
     def __init__(self) -> None:
         super().__init__()
     async def subscribe(self, sub: Subscriber[subable_T], args: sub_args) -> None:
-        pass
+        ...
     async def unsubscribe(self, sub: Subscriber[subable_T], args: unsub_args) -> None:
-        pass
+        ...
 
 
 class Subscriber[sub_T](Protocol):
@@ -26,9 +26,6 @@ class LambdaSubscriber[sub_T](Subscriber[sub_T]):
     async def call_back(self, t: sub_T):
         await self._call_back(t)
 
-
-def make_sub[sub_T](call_back: Callable[[sub_T],None]):
-    return 
 
 class QueueSubscriber[sub_T]:
     def __init__(self, max_itmes: int = 0) -> None:
