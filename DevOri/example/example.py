@@ -38,7 +38,7 @@ async def main():
                                  prefix=PREFIX,
                                  verbose=False) as clinet:
         friendly_name = "0x0c4314fffe19426b"
-        async with Device[bytes, Message_ai, Literal[""], RemoteCategory](
+        async with Device[bytes,Literal["get"], Message_ai, Literal[""], RemoteCategory](
                             friendly_name=friendly_name, 
                             communicator=clinet,
                             category_sorters={"": sort_remote_payload},

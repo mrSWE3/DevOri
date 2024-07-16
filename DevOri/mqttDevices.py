@@ -12,7 +12,7 @@ class Sender[payload_T](Protocol):
         pass
 
 
-class Reciver[payload_T]:
+class Reciver[payload_T, valid_topics]:
     def __init__(self, friendly_name: str, 
                  sender: Sender[payload_T],
                  prefix: str = ""
@@ -22,7 +22,7 @@ class Reciver[payload_T]:
         
         self._sender = sender
 
-    async def send_to(self, topic: LiteralString, payload: payload_T):
+    async def send_to(self, topic: valid_topics, payload: payload_T):
         await self._sender.send(f"{self._prefix}/{topic}", payload)
 
 
@@ -81,22 +81,22 @@ class Communicator[payload_T, receive_T](Sender[payload_T], Subscribable[receive
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__()
 
-class Device[payload_T, receive_T, valid_topics: LiteralString, e: Enum]( AsyncContextManager[Any]):
+class Device[payload_T, valid_send_topics: LiteralString, receive_T, valid_recive_topics: LiteralString, e: Enum]( AsyncContextManager[Any]):
     def __init__(self, friendly_name: str,
                  communicator: Communicator[payload_T, receive_T],
-                 category_sorters: Dict[valid_topics, Callable[[receive_T], e]],
+                 category_sorters: Dict[valid_recive_topics, Callable[[receive_T], e]],
                  categories: Type[e],
                  prefix: str = ""
                  ) -> None:
-        self._reciver = Reciver[payload_T](friendly_name, communicator, prefix)
-        self._publisher = Publisher[receive_T, valid_topics, e](
+        self._reciver = Reciver[payload_T, valid_send_topics](friendly_name, communicator, prefix)
+        self._publisher = Publisher[receive_T, valid_recive_topics, e](
             friendly_name, communicator, category_sorters,categories, prefix)
 
-    async def send_to(self, topic: LiteralString, payload: payload_T):
+    async def send_to(self, topic: valid_send_topics, payload: payload_T):
         await self._reciver.send_to(topic, payload)
         
     
-    async def recive_from(self, topic: valid_topics, category: e) -> receive_T:
+    async def recive_from(self, topic: valid_recive_topics, category: e) -> receive_T:
         return await self._publisher.recive_from(topic, category)
 
     async def __aenter__(self):
