@@ -2,12 +2,12 @@ import os
 import sys
 sys.path.insert(1, "/".join(os.path.realpath(__file__).split("/")[0:-2]))
 
-from client_mqtt import *
+from DevOri.client_mqtt import *
 import asyncio
-from utils import dict2bytes, QueueSubscriber
+from DevOri.utils import any2bytes, QueueSubscriber
 
 from aiomqtt import Message as Message_Aio
-from Aiomqtt_imp import make_FundementalClient
+from DevOri.Aiomqtt_imp import make_FundementalClient
 PREFIX = "zigbee2mqtt"
 HOST = os.environ.get("MQTT_ADDR", "localhost")
 PORT = 1883
@@ -23,7 +23,7 @@ async def main():
         sub = QueueSubscriber[Message_Aio]()
         await fc.sub_topic(friendly_name, sub)
         while True:
-            await fc.publish(f"{friendly_name}/get", dict2bytes({"battery": ""}))
+            await fc.publish(f"{friendly_name}/get", any2bytes({"battery": ""}))
             message = await sub.get_item()
         
             print(f"found {message.payload} at {message.topic}")

@@ -1,7 +1,7 @@
 
 import os, sys
 import asyncio
-from aiomqtt import Message as Message_ai
+from  aiomqtt import Message as Message_ai
 from typing import Literal
 from enum import Enum, auto
 
@@ -9,9 +9,9 @@ from enum import Enum, auto
 sys.path.insert(1, "/".join(os.path.realpath(__file__).split("/")[0:-2]))
 
 
-from mqttDevices import Device
-from utils import any2bytes, bytes2any
-from Aiomqtt_imp import make_deviceClient
+from DevOri.mqttDevices import Device
+from DevOri.utils import any2bytes, bytes2any
+from DevOri.Aiomqtt_imp import make_deviceClient
 
 
 PREFIX = "zigbee2mqtt"
@@ -52,7 +52,7 @@ async def main():
                 
                 message = await device.recive_from(topic="", 
                                                    category=RemoteCategory.ACTION)
-                print(f"found {type(message)} at {message.topic}")
+                print(f"found {message.payload} at {message.topic}")
 
 if __name__ == "__main__":
     asyncio.run(main())
