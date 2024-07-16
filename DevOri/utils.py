@@ -1,10 +1,13 @@
-from __future__ import annotations
-
 from typing import TypeVar, Generic, List, Dict, Any, Generator, AsyncContextManager, Protocol, Callable, Coroutine
 import asyncio
 import json
 from dataclasses import dataclass
 
+
+
+class Subscriber[sub_T](Protocol):
+    async def call_back(self, t: sub_T):
+       ...
 
 class Subscribable[subable_T, sub_args, unsub_args](Protocol):
     def __init__(self) -> None:
@@ -13,11 +16,6 @@ class Subscribable[subable_T, sub_args, unsub_args](Protocol):
         ...
     async def unsubscribe(self, sub: Subscriber[subable_T], args: unsub_args) -> None:
         ...
-
-
-class Subscriber[sub_T](Protocol):
-    async def call_back(self, t: sub_T):
-       ...
 
 class LambdaSubscriber[sub_T](Subscriber[sub_T]):
     def __init__(self, call_back: Callable[[sub_T],Coroutine[None, None, None]]) -> None:
