@@ -1,7 +1,7 @@
 
 import asyncio
 from typing import AsyncContextManager, Dict, Protocol, Any, List, Coroutine, LiteralString, Callable, Type
-from utils import Subscribable, LambdaSubscriber
+from .utils import Subscribable, LambdaSubscriber
 from enum import Enum
 
 class Sender[payload_T](Protocol):

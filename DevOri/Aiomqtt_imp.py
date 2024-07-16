@@ -1,6 +1,6 @@
 from typing import AsyncGenerator, Any
 from aiomqtt import Client as AiomqttClient, Message as Aiomessage
-from client_mqtt import PhysicalClient, Message, DeviceClient, FundementalClient
+from .client_mqtt import PhysicalClient, Message, DeviceClient, FundementalClient
 
 class AiomqttPhysicalClient(PhysicalClient[bytes, Aiomessage]):
     def __init__(self, aiomqttClient: AiomqttClient) -> None:
