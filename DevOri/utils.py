@@ -50,7 +50,7 @@ class QueueSubscriber[sub_T]:
 def dict2bytes(d: Dict[Any, Any]) -> bytes:
     return json.dumps(d).encode('utf-8')
 
-def bytes2dict(b: bytes) -> Dict[str, str | int | float]:
+def bytes2dict(b: bytes) -> Dict[Any, Any]:
     return json.loads(b)
 
 
