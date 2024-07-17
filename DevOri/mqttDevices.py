@@ -32,6 +32,7 @@ class Publisher[receive_T, valid_topics: LiteralString, e: Enum](AsyncContextMan
                  informer: Subscribable[receive_T, str, str],
                  category_sorters: Dict[valid_topics, Callable[[receive_T], e]],
                  categories: Type[e],
+                 message_save_limit: Dict[valid_topics, Dict[e, int]] = {},
                  prefix: str = ""
                  ) -> None:
         
@@ -42,9 +43,11 @@ class Publisher[receive_T, valid_topics: LiteralString, e: Enum](AsyncContextMan
         self.prefix = f"{prefix}{"/" if prefix != "" else ""}{friendly_name}"
 
         for topic in self._category_sorters.keys():
+            topic_limit = message_save_limit.get(topic, {})
             self._topic_categories[topic] = {}
             for category in categories:
-                self._topic_categories[topic][category] = asyncio.Queue[receive_T]()
+                limit = topic_limit.get(category, 0)
+                self._topic_categories[topic][category] = asyncio.Queue[receive_T](limit)
 
     def make_sub(self, topic: valid_topics) -> LambdaSubscriber[receive_T]:
         async def f(payload: receive_T):
@@ -86,11 +89,12 @@ class Device[payload_T, valid_send_topics: LiteralString, receive_T, valid_reciv
                  communicator: Communicator[payload_T, receive_T],
                  category_sorters: Dict[valid_recive_topics, Callable[[receive_T], e]],
                  categories: Type[e],
+                 message_save_limit: Dict[valid_recive_topics, Dict[e, int]] = {},
                  prefix: str = ""
                  ) -> None:
         self._reciver = Reciver[payload_T, valid_send_topics](friendly_name, communicator, prefix)
         self._publisher = Publisher[receive_T, valid_recive_topics, e](
-            friendly_name, communicator, category_sorters,categories, prefix)
+            friendly_name, communicator, category_sorters,categories, message_save_limit, prefix)
 
     async def send_to(self, topic: valid_send_topics, payload: payload_T):
         await self._reciver.send_to(topic, payload)
