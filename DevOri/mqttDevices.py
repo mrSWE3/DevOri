@@ -52,7 +52,14 @@ class Publisher[receive_T, valid_topics: LiteralString, e: Enum](AsyncContextMan
     def make_sub(self, topic: valid_topics) -> LambdaSubscriber[receive_T]:
         async def f(payload: receive_T):
             category = self._category_sorters[topic](payload)
-            await self._topic_categories[topic][category].put(payload)
+            if self._topic_categories[topic][category].full():
+                await self._topic_categories[topic][category].get()
+            try: 
+                self._topic_categories[topic][category].put_nowait(payload)
+            except asyncio.QueueFull:
+                pass
+                
+            
         return LambdaSubscriber[receive_T](f)
 
     async def __aenter__(self):
