@@ -2,19 +2,19 @@ import os
 import sys
 sys.path.insert(1, "/".join(os.path.realpath(__file__).split("/")[0:-2]))
 
-from DevOri.client_mqtt import *
+from DevOri.Clients import *
 import asyncio
 from DevOri.utils import any2bytes, QueueSubscriber
 
 from aiomqtt import Message as Message_Aio
-from DevOri.Aiomqtt_imp import make_FundementalClient
+from DevOri.Aiomqtt_imp import make_FundamentalClient
 PREFIX = "zigbee2mqtt"
 HOST = os.environ.get("MQTT_ADDR", "localhost")
 PORT = 1883
 
 
 async def main():
-    async with make_FundementalClient(host=HOST,
+    async with make_FundamentalClient(host=HOST,
                                  port=PORT,
                                  prefix=PREFIX,
                                  verbose=True) as fc:
