@@ -195,10 +195,10 @@ class Device[payload_T, valid_send_topics: LiteralString, receive_T, valid_recei
     async def send_to(self, topic: valid_send_topics, payload: payload_T):
         """
         ## Summary
-            
+            Send payload to a valid topic
         ## Args
-            topic (valid_send_topics): 
-            payload (payload_T): 
+            topic (valid_send_topics): topic to send payload to
+            payload (payload_T):  type of payload to send to topic
         """
         await self._receiver.send_to(topic, payload)
         
@@ -206,30 +206,20 @@ class Device[payload_T, valid_send_topics: LiteralString, receive_T, valid_recei
     async def receive_from(self, topic: valid_receive_topics, category: e) -> receive_T:
         """
         ## Summary
-            
+            Request to receive an item from a topic under a category
         ## Args
-            topic (valid_receive_topics): 
-            category (e): 
+            topic (valid_receive_topics): topic to receive from
+            category (e): category under topic to receive from
         ## Return
-            receive_T
+            receive_T: payload requested from topic under category
         """
         return await self._publisher.receive_from(topic, category)
 
     async def __aenter__(self):
-        """
-        ## Summary
-            
-        """
         await self._publisher.__aenter__()
         return self
 
    
     async def __aexit__(self,*exc_info: Any):
-        """
-        ## Summary
-            
-        ## Args
-            exc_info (Any): 
-        """
         await self._publisher.__aexit__(*exc_info)
         return None
