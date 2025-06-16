@@ -120,7 +120,8 @@ def bytes2any(b: bytes) -> Any:
     ## Return
         Any: the object
     """
-    return json.loads(b)
+    s = b.decode('utf-8')
+    return json.loads(s)
 
 
 class MultiACM[ACM_T](AsyncContextManager[List[ACM_T]]):
