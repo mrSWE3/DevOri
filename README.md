@@ -29,5 +29,5 @@ The task of changing the library which handles client connections with the broke
     - Simplify handling of categorized payloads 
 
 ## Implementations
-Correctly, DevOri has successfully been used for a [personal IoT project](https://github.com/Datavetenskapsdivisionen/monaden-iot).
+Correctly, DevOri has successfully been used for a personal [IoT project](https://github.com/Datavetenskapsdivisionen/monaden-iot).
 
