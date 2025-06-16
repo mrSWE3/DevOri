@@ -1,0 +1,1 @@
+amqtt @ git+https://github.com/Yakifo/amqtt.git@5c74f12c3c8d06564cae4d0f687a51146d235323
